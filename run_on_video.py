@@ -10,9 +10,6 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from torchvision import transforms
-import torch.backends.cudnn as cudnn
-import torchvision
-import torch.nn.functional as F
 from PIL import Image
 
 import hopenet
@@ -63,29 +60,19 @@ if not os.path.exists(args.video):
     sys.exit('Video does not exist')
 
 model = hopenet.create_model()
-
-print('Loading data.')
-
-transformations = transforms.Compose([transforms.Scale(224),
-transforms.CenterCrop(224), transforms.ToTensor(),
-transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-
 model.to(device)
+model.eval()
 
-print('Ready to test network.')
-
-# Test the Model
-model.eval()  # Change model to 'eval' mode (BN uses moving mean/var).
-total = 0
-
-idx_tensor = [idx for idx in range(66)]
-idx_tensor = torch.FloatTensor(idx_tensor).to(device)
+transformations = transforms.Compose([
+    transforms.Resize(224),
+    transforms.CenterCrop(224), transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
 
 video = cv2.VideoCapture(args.video)
 
-# New cv2
-width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))   # float
-height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT)) # float
+width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 # Define the codec and create VideoWriter object
 fourcc = cv2.VideoWriter_fourcc(*'MJPG')
@@ -101,14 +88,12 @@ while True:
     ret, frame = video.read()
     if not ret:
         break
-    cv2_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    x_min, y_min, x_max, y_max = 0, 0, frame.shape[1], frame.shape[2]
+    # Convert to RGB.
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    # Crop image
-    img = Image.fromarray(cv2_frame)
-
-    # Transform
+    # Transform to 224x224
+    img = Image.fromarray(rgb_frame)
     img = transformations(img)
     img_shape = img.size()
     img = img.view(1, img_shape[0], img_shape[1], img_shape[2])

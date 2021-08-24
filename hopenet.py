@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 def create_model():
-
     model_dir = 'models'
     # The model recommended by the author for practical usage.
     model_file = os.path.join(model_dir, 'hopenet_robust_alpha1.pkl')
@@ -30,8 +29,11 @@ def create_model():
 
 
 class Hopenet(nn.Module):
-    # Hopenet with 3 output layers for yaw, pitch and roll
-    # Predicts Euler angles by binning and regression with the expected value
+    """
+        Hopenet with 3 output layers for yaw, pitch and roll.
+        Predicts Euler angles by binning and regression with the expected value.
+        The input shall be an N, 3, 224, 224 tensor in RGB format.
+    """
     def __init__(self, block=torchvision.models.resnet.Bottleneck, layers=[3, 4, 6, 3], num_bins=66):
         self.inplanes = 64
         super(Hopenet, self).__init__()
