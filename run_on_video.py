@@ -25,31 +25,56 @@ OUTPUT_DIR = 'output'
 
 
 def draw_axes(img, yaw, pitch, roll, size=100):
+    axes = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
 
-    pitch = pitch * np.pi / 180
-    yaw = -(yaw * np.pi / 180)
-    roll = roll * np.pi / 180
+    y = -np.deg2rad(yaw)
+    p = np.deg2rad(pitch)
+    r = np.deg2rad(roll)
 
-    height, width = img.shape[:2]
-    tdx = width / 2
-    tdy = height / 2
+    # TODO(ia): the matrix (based on the original implementation) is probably changing
+    # the axis from right-handed to left-handed.
+    r = np.array([
+            [np.cos(y) * np.cos(r), -np.cos(y) * np.sin(r), np.sin(y)],
+            [np.cos(p) * np.sin(r) + np.cos(r) * np.sin(p) * np.sin(y),
+                np.cos(p) * np.cos(r) - np.sin(p) * np.sin(y) * np.sin(r), -np.cos(y) * np.sin(p)],
+            [0, 0, 0]  # TODO(ia): find out the last row
+    ])
 
-    # X-Axis pointing to right. drawn in red
-    x1 = size * (np.cos(yaw) * np.cos(roll)) + tdx
-    y1 = size * (np.cos(pitch) * np.sin(roll) + np.cos(roll) * np.sin(pitch) * np.sin(yaw)) + tdy
+    origin = np.array((img.shape[1] / 2, img.shape[0] / 2, 0))
+    axes = np.dot(axes, r.T) * size + origin
 
-    # Y-Axis | drawn in green
-    #        v
-    x2 = size * (-np.cos(yaw) * np.sin(roll)) + tdx
-    y2 = size * (np.cos(pitch) * np.cos(roll) - np.sin(pitch) * np.sin(yaw) * np.sin(roll)) + tdy
+    o = tuple(origin[:2].astype(int))
+    colors = ((0, 0, 255), (0, 255, 0), (255, 0, 0))
+    for ai in range(3):
+        a = tuple(axes[ai, :2].astype(int))
+        cv2.line(img, o, a, colors[ai], 3)
 
-    # Z-Axis (out of the screen) drawn in blue
-    x3 = size * (np.sin(yaw)) + tdx
-    y3 = size * (-np.cos(yaw) * np.sin(pitch)) + tdy
+    # Original implementation
 
-    cv2.line(img, (int(tdx), int(tdy)), (int(x1), int(y1)), (0, 0, 255), 3)
-    cv2.line(img, (int(tdx), int(tdy)), (int(x2), int(y2)), (0, 255, 0), 3)
-    cv2.line(img, (int(tdx), int(tdy)), (int(x3), int(y3)), (255, 0, 0), 2)
+    # pitch = pitch * np.pi / 180
+    # yaw = -(yaw * np.pi / 180)
+    # roll = roll * np.pi / 180
+    #
+    # height, width = img.shape[:2]
+    # tdx = width / 2
+    # tdy = height / 2
+    #
+    # # X-Axis pointing to right. drawn in red
+    # x1 = size * (np.cos(yaw) * np.cos(roll)) + tdx
+    # y1 = size * (np.cos(pitch) * np.sin(roll) + np.cos(roll) * np.sin(pitch) * np.sin(yaw)) + tdy
+    #
+    # # Y-Axis | drawn in green
+    # #        v
+    # x2 = size * (-np.cos(yaw) * np.sin(roll)) + tdx
+    # y2 = size * (np.cos(pitch) * np.cos(roll) - np.sin(pitch) * np.sin(yaw) * np.sin(roll)) + tdy
+    #
+    # # Z-Axis (out of the screen) drawn in blue
+    # x3 = size * (np.sin(yaw)) + tdx
+    # y3 = size * (-np.cos(yaw) * np.sin(pitch)) + tdy
+    #
+    # cv2.line(img, (int(tdx), int(tdy)), (int(x1), int(y1)), (0, 0, 255), 3)
+    # cv2.line(img, (int(tdx), int(tdy)), (int(x2), int(y2)), (0, 255, 0), 3)
+    # cv2.line(img, (int(tdx), int(tdy)), (int(x3), int(y3)), (255, 0, 0), 2)
 
     return img
 
