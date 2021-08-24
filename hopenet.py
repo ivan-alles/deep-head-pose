@@ -8,16 +8,22 @@ from torch import nn
 import torch.nn.functional as F
 import torchvision
 import logging
+from urllib import request
 
 logger = logging.getLogger(__name__)
 
 
 def create_model():
     model_dir = 'models'
+    model_file = 'hopenet_robust_alpha1.pkl'
     # The model recommended by the author for practical usage.
-    model_file = os.path.join(model_dir, 'hopenet_robust_alpha1.pkl')
+    model_path = os.path.join(model_dir, model_file)
 
-    saved_state_dict = torch.load(model_file)
+    if not os.path.isfile(model_path):
+        logger.info('Downloading Hopenet model...')
+        request.urlretrieve('https://drive.google.com/u/0/uc?id=1m25PrSE7g9D2q2XJVMR6IA7RaCvWSzCR&export=download', model_path)
+
+    saved_state_dict = torch.load(model_path)
     model = Hopenet(torchvision.models.resnet.Bottleneck, [3, 4, 6, 3], 66)
 
     # This one was added to the model after the checkpoint had been saved.
@@ -63,7 +69,6 @@ class Hopenet(nn.Module):
                 m.bias.data.zero_()
 
         self.idx_tensor = nn.Parameter(torch.tensor(range(66)), requires_grad=False)
-
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
