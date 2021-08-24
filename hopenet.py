@@ -12,6 +12,8 @@ from urllib import request
 
 logger = logging.getLogger(__name__)
 
+MEAN = [0.485, 0.456, 0.406]
+STD = [0.229, 0.224, 0.225]
 
 def create_model():
     model_dir = 'models'
@@ -26,8 +28,10 @@ def create_model():
     saved_state_dict = torch.load(model_path)
     model = Hopenet(torchvision.models.resnet.Bottleneck, [3, 4, 6, 3], 66)
 
-    # This one was added to the model after the checkpoint had been saved.
+    # These was added to the model after the checkpoint had been saved.
     saved_state_dict['idx_tensor'] = torch.tensor(range(66))
+    saved_state_dict['mean'] = torch.Tensor(MEAN).reshape((1, 3, 1, 1))
+    saved_state_dict['std'] = torch.Tensor(STD).reshape((1, 3, 1, 1))
 
     model.load_state_dict(saved_state_dict)
 
@@ -69,6 +73,8 @@ class Hopenet(nn.Module):
                 m.bias.data.zero_()
 
         self.idx_tensor = nn.Parameter(torch.tensor(range(66)), requires_grad=False)
+        self.mean = nn.Parameter(data=torch.Tensor(MEAN).reshape((1, 3, 1, 1)), requires_grad=False)
+        self.std = nn.Parameter(data=torch.Tensor(STD).reshape((1, 3, 1, 1)), requires_grad=False)
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
@@ -88,6 +94,8 @@ class Hopenet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        x = (x - self.mean) / self.std
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
