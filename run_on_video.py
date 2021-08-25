@@ -106,8 +106,6 @@ base_file_name = os.path.splitext(os.path.basename(args.video))[0]
 out = cv2.VideoWriter(os.path.join(OUTPUT_DIR, f'{base_file_name}.avi'), fourcc, 30, (width, height))
 txt_out = open(os.path.join(OUTPUT_DIR, f'{base_file_name}.txt'), 'w')
 
-frame_num = 0
-
 while True:
     ret, frame = video.read()
     if not ret:
@@ -129,7 +127,6 @@ while True:
     draw_axes(frame, yaw.item(), pitch.item(), roll.item())
 
     out.write(frame)
-    frame_num += 1
 
 
 
