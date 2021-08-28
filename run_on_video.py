@@ -28,18 +28,53 @@ OUTPUT_DIR = 'output'
 def draw_axes(img, yaw, pitch, roll, size=100):
     axes = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
 
-    y = -np.deg2rad(yaw)
-    p = np.deg2rad(pitch)
-    r = np.deg2rad(roll)
+    if False:
+        # Based on 300W-LP with some tweaks (to be explained yet)
 
-    # TODO(ia): the matrix (based on the original implementation) is probably changing
-    # the axis from right-handed to left-handed.
-    r = np.array([
-            [np.cos(y) * np.cos(r), -np.cos(y) * np.sin(r), np.sin(y)],
-            [np.cos(p) * np.sin(r) + np.cos(r) * np.sin(p) * np.sin(y),
-                np.cos(p) * np.cos(r) - np.sin(p) * np.sin(y) * np.sin(r), -np.cos(y) * np.sin(p)],
-            [0, 0, 0]  # TODO(ia): find out the last row
-    ])
+        # From 300W-LP RotationMatrix.m
+        # function [R] = RotationMatrix(angle_x, angle_y, angle_z)
+        # % get rotation matrix by rotate angle
+        #
+        # phi = angle_x;
+        # gamma = angle_y;
+        # theta = angle_z;
+        #
+        # R_x = [1 0 0 ; 0 cos(phi) sin(phi); 0 -sin(phi) cos(phi)];
+        # R_y = [cos(gamma) 0 -sin(gamma); 0 1 0; sin(gamma) 0 cos(gamma)];
+        # R_z = [cos(theta) sin(theta) 0; -sin(theta) cos(theta) 0; 0 0 1];
+        #
+        # R = R_x * R_y * R_z;
+        #
+        #
+        # end
+
+        phi = np.deg2rad(pitch)   # x
+        gamma = -np.deg2rad(yaw)   # y
+        theta = -np.deg2rad(roll)  # z
+        axes[2] *= -1
+
+        from numpy import sin, cos
+
+        R_x = np.array([[1, 0, 0, ], [0, cos(phi), sin(phi)], [0, -sin(phi), cos(phi)]])
+        R_y = np.array([[cos(gamma), 0, -sin(gamma)], [0, 1, 0], [sin(gamma), 0, cos(gamma)]])
+        R_z = np.array([[cos(theta), sin(theta), 0], [-sin(theta), cos(theta), 0], [0, 0, 1]])
+
+        r = np.linalg.multi_dot((R_x, R_y, R_z))
+    else:
+        # Based on original HopeNet code
+
+        y = -np.deg2rad(yaw)
+        p = np.deg2rad(pitch)
+        r = np.deg2rad(roll)
+
+        # TODO(ia): the matrix (based on the original implementation) is probably changing
+        # the axis from right-handed to left-handed.
+        r = np.array([
+                [np.cos(y) * np.cos(r), -np.cos(y) * np.sin(r), np.sin(y)],
+                [np.cos(p) * np.sin(r) + np.cos(r) * np.sin(p) * np.sin(y),
+                    np.cos(p) * np.cos(r) - np.sin(p) * np.sin(y) * np.sin(r), -np.cos(y) * np.sin(p)],
+                [0, 0, 0]  # TODO(ia): find out the last row
+        ])
 
     origin = np.array((img.shape[1] / 2, img.shape[0] / 2, 0))
     axes = np.dot(axes, r.T) * size + origin
@@ -48,26 +83,12 @@ def draw_axes(img, yaw, pitch, roll, size=100):
     colors = ((0, 0, 255), (0, 255, 0), (255, 0, 0))
     for ai in range(3):
         a = tuple(axes[ai, :2].astype(int))
-        cv2.line(img, o, a, colors[ai], 3)
+        cv2.line(img, o, a, colors[ai], 1)
 
 
-# From 300W-LP RotationMatrix.m
-# function [R] = RotationMatrix(angle_x, angle_y, angle_z)
-# % get rotation matrix by rotate angle
-#
-# phi = angle_x;
-# gamma = angle_y;
-# theta = angle_z;
-#
-# R_x = [1 0 0 ; 0 cos(phi) sin(phi); 0 -sin(phi) cos(phi)];
-# R_y = [cos(gamma) 0 -sin(gamma); 0 1 0; sin(gamma) 0 cos(gamma)];
-# R_z = [cos(theta) sin(theta) 0; -sin(theta) cos(theta) 0; 0 0 1];
-#
-# R = R_x * R_y * R_z;
-#
-#
-# end
 
+
+    # size /= 2
     # Original implementation
 
     # pitch = pitch * np.pi / 180
