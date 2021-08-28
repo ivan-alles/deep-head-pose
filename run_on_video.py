@@ -50,6 +50,24 @@ def draw_axes(img, yaw, pitch, roll, size=100):
         a = tuple(axes[ai, :2].astype(int))
         cv2.line(img, o, a, colors[ai], 3)
 
+
+# From 300W-LP RotationMatrix.m
+# function [R] = RotationMatrix(angle_x, angle_y, angle_z)
+# % get rotation matrix by rotate angle
+#
+# phi = angle_x;
+# gamma = angle_y;
+# theta = angle_z;
+#
+# R_x = [1 0 0 ; 0 cos(phi) sin(phi); 0 -sin(phi) cos(phi)];
+# R_y = [cos(gamma) 0 -sin(gamma); 0 1 0; sin(gamma) 0 cos(gamma)];
+# R_z = [cos(theta) sin(theta) 0; -sin(theta) cos(theta) 0; 0 0 1];
+#
+# R = R_x * R_y * R_z;
+#
+#
+# end
+
     # Original implementation
 
     # pitch = pitch * np.pi / 180
