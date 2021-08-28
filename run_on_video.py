@@ -78,6 +78,7 @@ def draw_axes(img, yaw, pitch, roll, size=100):
 
     return img
 
+
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -93,22 +94,33 @@ transformations = transforms.Compose([
     transforms.CenterCrop(224), transforms.ToTensor()
 ])
 
-video = cv2.VideoCapture(args.video)
 
-width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+class VideoReader:
+    def __init__(self, video_path):
+        self._video = cv2.VideoCapture(video_path)
+
+    def read_frame(self):
+        ret, frame = self._video.read()
+        if not ret:
+            frame = None
+        return frame
+
+
+reader = VideoReader(args.video)
+
 
 # Define the codec and create VideoWriter object
 fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 
 base_file_name = os.path.splitext(os.path.basename(args.video))[0]
 
-out = cv2.VideoWriter(os.path.join(OUTPUT_DIR, f'{base_file_name}.avi'), fourcc, 30, (width, height))
 txt_out = open(os.path.join(OUTPUT_DIR, f'{base_file_name}.txt'), 'w')
+video_out = None
 
+frame_num = 0
 while True:
-    ret, frame = video.read()
-    if not ret:
+    frame = reader.read_frame()
+    if frame is None:
         break
 
     # Convert to RGB.
@@ -123,10 +135,16 @@ while True:
 
     yaw, pitch, roll = model(img)
 
-    txt_out.write(str(frame_num) + ' %f %f %f\n' % (yaw, pitch, roll))
     draw_axes(frame, yaw.item(), pitch.item(), roll.item())
 
-    out.write(frame)
+    if video_out is None:
+        video_out = cv2.VideoWriter(os.path.join(OUTPUT_DIR, f'{base_file_name}.avi'), fourcc, 30,
+                                    (frame.shape[1::-1]))
+
+    video_out.write(frame)
+    txt_out.write(str(frame_num) + ' %f %f %f\n' % (yaw, pitch, roll))
+    frame_num += 1
+
 
 
 
