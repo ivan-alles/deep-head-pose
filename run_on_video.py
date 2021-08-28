@@ -1,8 +1,9 @@
 """ Run the self-contained Hopenet on a video file. The video shall be cropped to contain the head only. """
 
+import argparse
+import glob
 import sys
 import os
-import argparse
 
 import cv2
 import numpy as np
@@ -97,13 +98,28 @@ transformations = transforms.Compose([
 
 class VideoReader:
     def __init__(self, video_path):
-        self._video = cv2.VideoCapture(video_path)
+        self._video = None
+        self._frames = None
+        self._frames_index = 0
+        if os.path.isdir(video_path):
+            self._frames = glob.glob(video_path + '/**/*.png', recursive=True)
+            self._frames_index = 0
+        else:
+            self._video = cv2.VideoCapture(video_path)
 
     def read_frame(self):
-        ret, frame = self._video.read()
-        if not ret:
-            frame = None
-        return frame
+        if self._frames is not None:
+            if self._frames_index >= len(self._frames):
+                return None
+            frame_path = self._frames[self._frames_index]
+            self._frames_index += 1
+            frame = cv2.imread(frame_path)
+            return frame
+        else:
+            ret, frame = self._video.read()
+            if not ret:
+                frame = None
+            return frame
 
 
 reader = VideoReader(args.video)
