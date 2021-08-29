@@ -60,13 +60,23 @@ def draw_axis_orig(img, yaw, pitch, roll, tdx=None, tdy=None, size = 100):
     return img
 
 
-def draw_axes(img, yaw, pitch, roll, axes=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], size=100, thickness=1):
-    """ An advanced version using rotation matrix. """
+def draw_axes(img, yaw, pitch, roll, axes=((1, 0, 0), (0, 1, 0), (0, 0, 1)), size=100, thickness=1):
+    """
+    Draws axes using rotation matrix.
+    :param img: image
+    :param yaw: angle prediciton in degrees.
+    :param pitch: angle prediciton in degrees.
+    :param roll: angle prediciton in degrees.
+    :param axes axes unit vectors, default value corresponds to the standard right-handed CS:
+    x, y as on the screen, z axis looking away from the observer.
+    :param size: axis length.
+    :param thickness: line thickness.
+    """
     axes = np.array(axes, dtype=np.float32)
 
     r = hopenet.angles_to_rotation_matrix(yaw, pitch, roll, degrees=True)
 
-    # Make sure this is the roatation matrix (before we create a proper unit test).
+    # Make sure this is the rotation matrix (before we create a proper unit test).
     assert np.linalg.norm(np.dot(r, r.T) - np.eye(3)) < 1e-5
     assert np.allclose(np.linalg.det(r), 1)
 
@@ -153,16 +163,27 @@ while True:
 
     yaw, pitch, roll = model(img)
 
+    # Test code
+    # yaw = torch.tensor(0.0)
+    # pitch = torch.tensor(20.0)
+    # roll = torch.tensor(0.0)
+
     # Show original hopenet version for comparison
     show_original_axes = True
 
     if show_original_axes:
+        # Original assumes that the z axis is looking to the observer (a left-handed CS).
         draw_axis_orig(frame, yaw.item(), pitch.item(), roll.item(), size=100)
-        axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]  # Original uses left-handed CS
-    else:
-        axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]  # TODO(ia): explain why z axis is looks to the opposite direction.
 
-    draw_axes(frame, yaw, pitch, roll, size=200, thickness=1, axes=axes)
+    draw_axes(frame, yaw, pitch, roll, size=200, thickness=1)
+
+    cv2.putText(frame, f"-pitch/x {pitch:.2f}", (0, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+    cv2.putText(frame, f"yaw/y {yaw:.2f}", (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+    cv2.putText(frame, f"roll/z: {roll:.2f}", (0, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+
+    # cv2.imshow('frame', frame)
+    # cv2.waitKey(0)
 
     if video_out is None:
         video_out = cv2.VideoWriter(os.path.join(OUTPUT_DIR, f'{base_file_name}.avi'), fourcc, 30,

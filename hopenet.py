@@ -127,9 +127,13 @@ class Hopenet(nn.Module):
 def angles_to_rotation_matrix(yaw, pitch, roll, degrees=True):
     """ Convert predicted angles to the rotation matrix. It can be used to post-multiply
         row vectors: rotated = vector * R.
-        Based on hopenet's draw_axis() from code/utils.py.
+
+        Based on hopenet's draw_axis() from code/utils.py. The original code draws correctly draws
+        the axes based on the assumption, that z-axis is looking from the screen to the observer
+        (left-handed CS).
     """
-    yaw = -yaw
+    # Negate to make the matrix consistent with the head position.
+    pitch = -pitch
     if degrees:
         yaw = torch.deg2rad(yaw)
         pitch = torch.deg2rad(pitch)
