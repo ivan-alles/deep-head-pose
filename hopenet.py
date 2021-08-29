@@ -122,3 +122,29 @@ class Hopenet(nn.Module):
         roll = torch.sum(roll * self.idx_tensor) * 3 - 99
 
         return yaw, pitch, roll
+
+
+def angles_to_rotation_matrix(yaw, pitch, roll, degrees=True):
+    """ Convert predicted angles to the rotation matrix. It can be used to post-multiply
+        row vectors: rotated = vector * R.
+        Based on hopenet's draw_axis() from code/utils.py.
+    """
+    yaw = -yaw
+    if degrees:
+        yaw = torch.deg2rad(yaw)
+        pitch = torch.deg2rad(pitch)
+        roll = torch.deg2rad(roll)
+
+    c1 = torch.tensor([
+        torch.cos(yaw) * torch.cos(roll),
+        -torch.cos(yaw) * torch.sin(roll),
+        torch.sin(yaw)])
+    c2 = torch.tensor([
+        torch.cos(pitch) * torch.sin(roll) + torch.cos(roll) * torch.sin(pitch) * torch.sin(yaw),
+        torch.cos(pitch) * torch.cos(roll) - torch.sin(pitch) * torch.sin(yaw) * torch.sin(roll),
+        -torch.cos(yaw) * torch.sin(pitch)])
+
+    c3 = torch.cross(c1, c2)
+
+    r = torch.stack((c1, c2, c3), dim=-1)
+    return r

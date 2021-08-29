@@ -4,6 +4,7 @@ import argparse
 import glob
 import sys
 import os
+from math import cos, sin
 
 import cv2
 import numpy as np
@@ -25,96 +26,58 @@ args = parser.parse_args()
 OUTPUT_DIR = 'output'
 
 
-def draw_axes(img, yaw, pitch, roll, size=100):
-    axes = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
+def draw_axis_orig(img, yaw, pitch, roll, tdx=None, tdy=None, size = 100):
+    """ Orignal Hope code from code/utils.py. Is used for comparison. """
+    pitch = pitch * np.pi / 180
+    yaw = -(yaw * np.pi / 180)
+    roll = roll * np.pi / 180
 
-    if False:
-        # Based on 300W-LP with some tweaks (to be explained yet)
-
-        # From 300W-LP RotationMatrix.m
-        # function [R] = RotationMatrix(angle_x, angle_y, angle_z)
-        # % get rotation matrix by rotate angle
-        #
-        # phi = angle_x;
-        # gamma = angle_y;
-        # theta = angle_z;
-        #
-        # R_x = [1 0 0 ; 0 cos(phi) sin(phi); 0 -sin(phi) cos(phi)];
-        # R_y = [cos(gamma) 0 -sin(gamma); 0 1 0; sin(gamma) 0 cos(gamma)];
-        # R_z = [cos(theta) sin(theta) 0; -sin(theta) cos(theta) 0; 0 0 1];
-        #
-        # R = R_x * R_y * R_z;
-        #
-        #
-        # end
-
-        phi = np.deg2rad(pitch)   # x
-        gamma = -np.deg2rad(yaw)   # y
-        theta = -np.deg2rad(roll)  # z
-        axes[2] *= -1
-
-        from numpy import sin, cos
-
-        R_x = np.array([[1, 0, 0, ], [0, cos(phi), sin(phi)], [0, -sin(phi), cos(phi)]])
-        R_y = np.array([[cos(gamma), 0, -sin(gamma)], [0, 1, 0], [sin(gamma), 0, cos(gamma)]])
-        R_z = np.array([[cos(theta), sin(theta), 0], [-sin(theta), cos(theta), 0], [0, 0, 1]])
-
-        r = np.linalg.multi_dot((R_x, R_y, R_z))
+    if tdx != None and tdy != None:
+        tdx = tdx
+        tdy = tdy
     else:
-        # Based on original HopeNet code
+        height, width = img.shape[:2]
+        tdx = width / 2
+        tdy = height / 2
 
-        y = -np.deg2rad(yaw)
-        p = np.deg2rad(pitch)
-        r = np.deg2rad(roll)
+    # X-Axis pointing to right. drawn in red
+    x1 = size * (cos(yaw) * cos(roll)) + tdx
+    y1 = size * (cos(pitch) * sin(roll) + cos(roll) * sin(pitch) * sin(yaw)) + tdy
 
-        # TODO(ia): the matrix (based on the original implementation) is probably changing
-        # the axis from right-handed to left-handed.
-        r = np.array([
-                [np.cos(y) * np.cos(r), -np.cos(y) * np.sin(r), np.sin(y)],
-                [np.cos(p) * np.sin(r) + np.cos(r) * np.sin(p) * np.sin(y),
-                    np.cos(p) * np.cos(r) - np.sin(p) * np.sin(y) * np.sin(r), -np.cos(y) * np.sin(p)],
-                [0, 0, 0]  # TODO(ia): find out the last row
-        ])
+    # Y-Axis | drawn in green
+    #        v
+    x2 = size * (-cos(yaw) * sin(roll)) + tdx
+    y2 = size * (cos(pitch) * cos(roll) - sin(pitch) * sin(yaw) * sin(roll)) + tdy
+
+    # Z-Axis (out of the screen) drawn in blue
+    x3 = size * (sin(yaw)) + tdx
+    y3 = size * (-cos(yaw) * sin(pitch)) + tdy
+
+    cv2.line(img, (int(tdx), int(tdy)), (int(x1),int(y1)),(0,0,255),3)
+    cv2.line(img, (int(tdx), int(tdy)), (int(x2),int(y2)),(0,255,0),3)
+    cv2.line(img, (int(tdx), int(tdy)), (int(x3),int(y3)),(255,0,0),2)
+
+    return img
+
+
+def draw_axes(img, yaw, pitch, roll, axes=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], size=100, thickness=1):
+    """ An advanced version using rotation matrix. """
+    axes = np.array(axes, dtype=np.float32)
+
+    r = hopenet.angles_to_rotation_matrix(yaw, pitch, roll, degrees=True)
+
+    # Make sure this is the roatation matrix (before we create a proper unit test).
+    assert np.linalg.norm(np.dot(r, r.T) - np.eye(3)) < 1e-5
+    assert np.allclose(np.linalg.det(r), 1)
 
     origin = np.array((img.shape[1] / 2, img.shape[0] / 2, 0))
-    axes = np.dot(axes, r.T) * size + origin
+    axes = np.dot(axes, r) * size + origin
 
     o = tuple(origin[:2].astype(int))
     colors = ((0, 0, 255), (0, 255, 0), (255, 0, 0))
     for ai in range(3):
         a = tuple(axes[ai, :2].astype(int))
-        cv2.line(img, o, a, colors[ai], 1)
-
-
-
-
-    # size /= 2
-    # Original implementation
-
-    # pitch = pitch * np.pi / 180
-    # yaw = -(yaw * np.pi / 180)
-    # roll = roll * np.pi / 180
-    #
-    # height, width = img.shape[:2]
-    # tdx = width / 2
-    # tdy = height / 2
-    #
-    # # X-Axis pointing to right. drawn in red
-    # x1 = size * (np.cos(yaw) * np.cos(roll)) + tdx
-    # y1 = size * (np.cos(pitch) * np.sin(roll) + np.cos(roll) * np.sin(pitch) * np.sin(yaw)) + tdy
-    #
-    # # Y-Axis | drawn in green
-    # #        v
-    # x2 = size * (-np.cos(yaw) * np.sin(roll)) + tdx
-    # y2 = size * (np.cos(pitch) * np.cos(roll) - np.sin(pitch) * np.sin(yaw) * np.sin(roll)) + tdy
-    #
-    # # Z-Axis (out of the screen) drawn in blue
-    # x3 = size * (np.sin(yaw)) + tdx
-    # y3 = size * (-np.cos(yaw) * np.sin(pitch)) + tdy
-    #
-    # cv2.line(img, (int(tdx), int(tdy)), (int(x1), int(y1)), (0, 0, 255), 3)
-    # cv2.line(img, (int(tdx), int(tdy)), (int(x2), int(y2)), (0, 255, 0), 3)
-    # cv2.line(img, (int(tdx), int(tdy)), (int(x3), int(y3)), (255, 0, 0), 2)
+        cv2.line(img, o, a, colors[ai], thickness)
 
     return img
 
@@ -190,7 +153,16 @@ while True:
 
     yaw, pitch, roll = model(img)
 
-    draw_axes(frame, yaw.item(), pitch.item(), roll.item())
+    # Show original hopenet version for comparison
+    show_original_axes = True
+
+    if show_original_axes:
+        draw_axis_orig(frame, yaw.item(), pitch.item(), roll.item(), size=100)
+        axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]  # Original uses left-handed CS
+    else:
+        axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]  # TODO(ia): explain why z axis is looks to the opposite direction.
+
+    draw_axes(frame, yaw, pitch, roll, size=200, thickness=1, axes=axes)
 
     if video_out is None:
         video_out = cv2.VideoWriter(os.path.join(OUTPUT_DIR, f'{base_file_name}.avi'), fourcc, 30,
