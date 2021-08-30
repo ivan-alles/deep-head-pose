@@ -1,14 +1,27 @@
 import cv2
 import numpy as np
+import scipy.io
 import torch
 
 from distilled import hopenet
 
 
-def softmax_temperature(tensor, temperature):
-    result = torch.exp(tensor / temperature)
-    result = torch.div(result, torch.sum(result, 1).unsqueeze(1).expand_as(result))
-    return result
+def get_pt2d_from_mat(mat_path):
+    # Get 2D landmarks
+    mat = scipy.io.loadmat(mat_path)
+    pt2d = mat['pt2d']
+    return pt2d
+
+
+def get_ypr_from_mat(mat_path):
+    # Get yaw, pitch, roll from .mat annotation.
+    # They are in radians
+    mat = scipy.io.loadmat(mat_path)
+    # [pitch yaw roll tdx tdy tdz scale_factor]
+    pre_pose_params = mat['Pose_Para'][0]
+    # Get [pitch, yaw, roll]
+    pose_params = pre_pose_params[:3]
+    return pose_params
 
 
 def draw_axis_orig(img, yaw, pitch, roll, tdx=None, tdy=None, size = 100):
@@ -47,7 +60,7 @@ def draw_axis_orig(img, yaw, pitch, roll, tdx=None, tdy=None, size = 100):
     return img
 
 
-def draw_axes(img, yaw, pitch, roll, axes=((1, 0, 0), (0, 1, 0), (0, 0, 1)), size=100, thickness=1):
+def draw_axes(img, yaw, pitch, roll, tx=0, ty=0, axes=((1, 0, 0), (0, 1, 0), (0, 0, 1)), size=100, thickness=1):
     """
     Draws axes using rotation matrix.
     :param img: image
@@ -67,7 +80,10 @@ def draw_axes(img, yaw, pitch, roll, axes=((1, 0, 0), (0, 1, 0), (0, 0, 1)), siz
     assert np.linalg.norm(np.dot(r, r.T) - np.eye(3)) < 1e-5
     assert np.allclose(np.linalg.det(r), 1)
 
-    origin = np.array((img.shape[1] / 2, img.shape[0] / 2, 0))
+    if tx is not None and ty is not None:
+        origin = np.array((tx, ty, 0), dtype=np.float32)
+    else:
+        origin = np.array((img.shape[1] / 2, img.shape[0] / 2, 0))
     axes = np.dot(axes, r) * size + origin
 
     o = tuple(origin[:2].astype(int))
