@@ -1,4 +1,4 @@
-This directory contains the distilled Hopenet and test tools converted to python3. 
+This directory contains a distilled Hopenet and test tools converted to python3. 
 They produce the same results as the original ones from code directory.
 
 The reference run on [AFLW2000](http://www.cbsr.ia.ac.cn/users/xiangyuzhu/projects/3DDFA/Database/AFLW2000-3D.zip) dataset
