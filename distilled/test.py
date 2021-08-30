@@ -15,7 +15,9 @@ import torch.backends.cudnn as cudnn
 import torchvision
 import torch.nn.functional as F
 
-import code.datasets, distilled.hopenet
+from distilled import datasets
+from distilled import hopenet
+from distilled import utils
 
 def parse_args():
     """Parse input arguments."""
@@ -43,15 +45,8 @@ if __name__ == '__main__':
 
     cudnn.enabled = True
     gpu = args.gpu_id
-    snapshot_path = args.snapshot
 
-    # ResNet50 structure
-    model = distilled.Hopenet(torchvision.models.resnet.Bottleneck, [3, 4, 6, 3], 66)
-
-    print('Loading snapshot.')
-    # Load snapshot
-    saved_state_dict = torch.load(snapshot_path)
-    model.load_state_dict(saved_state_dict)
+    model = hopenet.create_model(args.snapshot)
 
     print('Loading data.')
 
@@ -78,9 +73,7 @@ if __name__ == '__main__':
     else:
         print('Error: not a valid dataset name')
         sys.exit()
-    test_loader = torch.utils.data.DataLoader(dataset=pose_dataset,
-                                               batch_size=args.batch_size,
-                                               num_workers=2)
+    test_loader = torch.utils.data.DataLoader(dataset=pose_dataset, batch_size=args.batch_size, num_workers=0)
 
     model.cuda(gpu)
 
@@ -103,25 +96,25 @@ if __name__ == '__main__':
         images = Variable(images).cuda(gpu)
         total += cont_labels.size(0)
 
-        label_yaw = cont_labels[:,0].float()
-        label_pitch = cont_labels[:,1].float()
-        label_roll = cont_labels[:,2].float()
+        label_yaw = cont_labels[:,0].float().cuda(gpu)
+        label_pitch = cont_labels[:,1].float().cuda(gpu)
+        label_roll = cont_labels[:,2].float().cuda(gpu)
 
-        yaw, pitch, roll = model(images)
+        yaw_predicted, pitch_predicted, roll_predicted = model(images)
 
-        # Binned predictions
-        _, yaw_bpred = torch.max(yaw.data, 1)
-        _, pitch_bpred = torch.max(pitch.data, 1)
-        _, roll_bpred = torch.max(roll.data, 1)
-
-        # Continuous predictions
-        yaw_predicted = utils.softmax_temperature(yaw.data, 1)
-        pitch_predicted = utils.softmax_temperature(pitch.data, 1)
-        roll_predicted = utils.softmax_temperature(roll.data, 1)
-
-        yaw_predicted = torch.sum(yaw_predicted * idx_tensor, 1).cpu() * 3 - 99
-        pitch_predicted = torch.sum(pitch_predicted * idx_tensor, 1).cpu() * 3 - 99
-        roll_predicted = torch.sum(roll_predicted * idx_tensor, 1).cpu() * 3 - 99
+        # # Binned predictions
+        # _, yaw_bpred = torch.max(yaw.data, 1)
+        # _, pitch_bpred = torch.max(pitch.data, 1)
+        # _, roll_bpred = torch.max(roll.data, 1)
+        #
+        # # Continuous predictions
+        # yaw_predicted = utils.softmax_temperature(yaw.data, 1)
+        # pitch_predicted = utils.softmax_temperature(pitch.data, 1)
+        # roll_predicted = utils.softmax_temperature(roll.data, 1)
+        #
+        # yaw_predicted = torch.sum(yaw_predicted * idx_tensor, 1).cpu() * 3 - 99
+        # pitch_predicted = torch.sum(pitch_predicted * idx_tensor, 1).cpu() * 3 - 99
+        # roll_predicted = torch.sum(roll_predicted * idx_tensor, 1).cpu() * 3 - 99
 
         # Mean absolute error
         yaw_error += torch.sum(torch.abs(yaw_predicted - label_yaw))
@@ -138,8 +131,7 @@ if __name__ == '__main__':
             if args.batch_size == 1:
                 error_string = 'y %.2f, p %.2f, r %.2f' % (torch.sum(torch.abs(yaw_predicted - label_yaw)), torch.sum(torch.abs(pitch_predicted - label_pitch)), torch.sum(torch.abs(roll_predicted - label_roll)))
                 cv2.putText(cv2_img, error_string, (30, cv2_img.shape[0]- 30), fontFace=1, fontScale=1, color=(0,0,255), thickness=2)
-            # utils.plot_pose_cube(cv2_img, yaw_predicted[0], pitch_predicted[0], roll_predicted[0], size=100)
-            utils.draw_axis(cv2_img, yaw_predicted[0], pitch_predicted[0], roll_predicted[0], tdx = 200, tdy= 200, size=100)
+            utils.draw_axes(cv2_img, yaw_predicted, pitch_predicted, roll_predicted, tx=200, ty=200, size=100)
             image_file = os.path.join('output/images', name + '.jpg')
             os.makedirs(os.path.dirname(image_file), exist_ok=True)
             cv2.imwrite(image_file, cv2_img)
