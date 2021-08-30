@@ -16,15 +16,16 @@ MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
 
 
-def create_model():
-    model_dir = 'models'
-    model_file = 'hopenet_robust_alpha1.pkl'
-    # The model recommended by the author for practical usage.
-    model_path = os.path.join(model_dir, model_file)
+def create_model(model_path=None):
+    if model_path is None:
+        model_dir = 'models'
+        model_file = 'hopenet_robust_alpha1.pkl'
+        # The model recommended by the author for practical usage.
+        model_path = os.path.join(model_dir, model_file)
 
-    if not os.path.isfile(model_path):
-        logger.info('Downloading Hopenet model...')
-        request.urlretrieve('https://drive.google.com/u/0/uc?id=1m25PrSE7g9D2q2XJVMR6IA7RaCvWSzCR&export=download', model_path)
+        if not os.path.isfile(model_path):
+            logger.info('Downloading Hopenet model...')
+            request.urlretrieve('https://drive.google.com/u/0/uc?id=1m25PrSE7g9D2q2XJVMR6IA7RaCvWSzCR&export=download', model_path)
 
     saved_state_dict = torch.load(model_path)
     model = Hopenet(torchvision.models.resnet.Bottleneck, [3, 4, 6, 3], 66)
