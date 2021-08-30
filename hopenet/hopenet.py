@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
 
+
 def create_model():
     model_dir = 'models'
     model_file = 'hopenet_robust_alpha1.pkl'
