@@ -11,3 +11,7 @@ produces the following output:
 Test error in degrees of the model on the 2000 test images. Yaw: 9.6818, Pitch: 9.3810, Roll: 8.5526
 ```
 
+The run with the distilled version produces the same output 
+```bash
+python --data_dir D:\blob\AFLW2000 --filename_list data\AFLW2000.txt --dataset AFLW2000 --snapshot models\hopenet_robust_alpha1.pkl
+```

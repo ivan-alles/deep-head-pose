@@ -40,19 +40,21 @@ def parse_args():
 
     return args
 
+
 if __name__ == '__main__':
     args = parse_args()
 
-    cudnn.enabled = True
-    gpu = args.gpu_id
+    device = torch.device(f"cuda:{args.gpu_id}" if torch.cuda.is_available() else "cpu")
 
     model = hopenet.create_model(args.snapshot)
+    model.to(device)
+    model.eval()
 
     print('Loading data.')
 
-    transformations = transforms.Compose([transforms.Scale(224),
-    transforms.CenterCrop(224), transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+    transformations = transforms.Compose([
+        transforms.Scale(224),
+        transforms.CenterCrop(224), transforms.ToTensor()])
 
     if args.dataset == 'Pose_300W_LP':
         pose_dataset = datasets.Pose_300W_LP(args.data_dir, args.filename_list, transformations)
@@ -75,66 +77,48 @@ if __name__ == '__main__':
         sys.exit()
     test_loader = torch.utils.data.DataLoader(dataset=pose_dataset, batch_size=args.batch_size, num_workers=0)
 
-    model.cuda(gpu)
 
     print('Ready to test network.')
 
-    # Test the Model
-    model.eval()  # Change model to 'eval' mode (BN uses moving mean/var).
     total = 0
 
     idx_tensor = [idx for idx in range(66)]
-    idx_tensor = torch.FloatTensor(idx_tensor).cuda(gpu)
+    idx_tensor = torch.FloatTensor(idx_tensor).to(device)
 
     yaw_error = .0
     pitch_error = .0
     roll_error = .0
 
-    l1loss = torch.nn.L1Loss(size_average=False)
-
     for i, (images, labels, cont_labels, name) in enumerate(test_loader):
-        images = Variable(images).cuda(gpu)
-        total += cont_labels.size(0)
+        with torch.no_grad():
+            images = Variable(images).to(device)
+            total += cont_labels.size(0)
 
-        label_yaw = cont_labels[:,0].float().cuda(gpu)
-        label_pitch = cont_labels[:,1].float().cuda(gpu)
-        label_roll = cont_labels[:,2].float().cuda(gpu)
+            label_yaw = cont_labels[:, 0].float().to(device)
+            label_pitch = cont_labels[:, 1].float().to(device)
+            label_roll = cont_labels[:, 2].float().to(device)
 
-        yaw_predicted, pitch_predicted, roll_predicted = model(images)
+            yaw_predicted, pitch_predicted, roll_predicted = model(images)
 
-        # # Binned predictions
-        # _, yaw_bpred = torch.max(yaw.data, 1)
-        # _, pitch_bpred = torch.max(pitch.data, 1)
-        # _, roll_bpred = torch.max(roll.data, 1)
-        #
-        # # Continuous predictions
-        # yaw_predicted = utils.softmax_temperature(yaw.data, 1)
-        # pitch_predicted = utils.softmax_temperature(pitch.data, 1)
-        # roll_predicted = utils.softmax_temperature(roll.data, 1)
-        #
-        # yaw_predicted = torch.sum(yaw_predicted * idx_tensor, 1).cpu() * 3 - 99
-        # pitch_predicted = torch.sum(pitch_predicted * idx_tensor, 1).cpu() * 3 - 99
-        # roll_predicted = torch.sum(roll_predicted * idx_tensor, 1).cpu() * 3 - 99
+            # Mean absolute error
+            yaw_error += torch.sum(torch.abs(yaw_predicted - label_yaw))
+            pitch_error += torch.sum(torch.abs(pitch_predicted - label_pitch))
+            roll_error += torch.sum(torch.abs(roll_predicted - label_roll))
 
-        # Mean absolute error
-        yaw_error += torch.sum(torch.abs(yaw_predicted - label_yaw))
-        pitch_error += torch.sum(torch.abs(pitch_predicted - label_pitch))
-        roll_error += torch.sum(torch.abs(roll_predicted - label_roll))
-
-        # Save first image in batch with pose cube or axis.
-        if args.save_viz:
-            name = name[0]
-            if args.dataset == 'BIWI':
-                cv2_img = cv2.imread(os.path.join(args.data_dir, name + '_rgb.png'))
-            else:
-                cv2_img = cv2.imread(os.path.join(args.data_dir, name + '.jpg'))
-            if args.batch_size == 1:
-                error_string = 'y %.2f, p %.2f, r %.2f' % (torch.sum(torch.abs(yaw_predicted - label_yaw)), torch.sum(torch.abs(pitch_predicted - label_pitch)), torch.sum(torch.abs(roll_predicted - label_roll)))
-                cv2.putText(cv2_img, error_string, (30, cv2_img.shape[0]- 30), fontFace=1, fontScale=1, color=(0,0,255), thickness=2)
-            utils.draw_axes(cv2_img, yaw_predicted, pitch_predicted, roll_predicted, tx=200, ty=200, size=100)
-            image_file = os.path.join('output/images', name + '.jpg')
-            os.makedirs(os.path.dirname(image_file), exist_ok=True)
-            cv2.imwrite(image_file, cv2_img)
+            # Save first image in batch with pose cube or axis.
+            if args.save_viz:
+                name = name[0]
+                if args.dataset == 'BIWI':
+                    cv2_img = cv2.imread(os.path.join(args.data_dir, name + '_rgb.png'))
+                else:
+                    cv2_img = cv2.imread(os.path.join(args.data_dir, name + '.jpg'))
+                if args.batch_size == 1:
+                    error_string = 'y %.2f, p %.2f, r %.2f' % (torch.sum(torch.abs(yaw_predicted - label_yaw)), torch.sum(torch.abs(pitch_predicted - label_pitch)), torch.sum(torch.abs(roll_predicted - label_roll)))
+                    cv2.putText(cv2_img, error_string, (30, cv2_img.shape[0]- 30), fontFace=1, fontScale=1, color=(0,0,255), thickness=2)
+                utils.draw_axes(cv2_img, yaw_predicted, pitch_predicted, roll_predicted, tx=200, ty=200, size=100)
+                image_file = os.path.join('output/images', name + '.jpg')
+                os.makedirs(os.path.dirname(image_file), exist_ok=True)
+                cv2.imwrite(image_file, cv2_img)
 
     print('Test error in degrees of the model on the ' + str(total) +
     ' test images. Yaw: %.4f, Pitch: %.4f, Roll: %.4f' % (yaw_error / total,
