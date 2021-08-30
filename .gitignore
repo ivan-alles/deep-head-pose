@@ -1,6 +1,5 @@
 *.pyc
 *.npy
-data/*
 output/*
 *.jpg
 *.png
