@@ -8,7 +8,7 @@ python --data_dir D:\blob\AFLW2000 --filename_list data\AFLW2000.txt --dataset A
 ```
 produces the following output: 
 ```bash
-Test error in degrees of the model on the 2000 test images. Yaw: 9.6818, Pitch: 9.3810, Roll: 8.5526
+Test error in degrees of the model on the 2000 test images. Yaw: 9.6818, Pitch: 9.3810, Roll: 8.5526 Rotation diff: 13.2437
 ```
 
 The run with the distilled version produces the same output 

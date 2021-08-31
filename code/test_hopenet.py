@@ -15,6 +15,8 @@ import torch.nn.functional as F
 
 import datasets, hopenet, utils
 
+import distilled.utils
+
 def parse_args():
     """Parse input arguments."""
     parser = argparse.ArgumentParser(description='Head pose estimation using the Hopenet network.')
@@ -95,6 +97,8 @@ if __name__ == '__main__':
     pitch_error = .0
     roll_error = .0
 
+    rotation_diff_error = 0.
+
     l1loss = torch.nn.L1Loss(size_average=False)
 
     for i, (images, labels, cont_labels, name) in enumerate(test_loader):
@@ -126,6 +130,11 @@ if __name__ == '__main__':
         pitch_error += torch.sum(torch.abs(pitch_predicted - label_pitch))
         roll_error += torch.sum(torch.abs(roll_predicted - label_roll))
 
+        # Difference between rotation matrices
+        rot_pr = distilled.utils.hopenet.angles_to_rotation_matrix(yaw_predicted, pitch_predicted, roll_predicted)
+        rot_gt = distilled.utils.hopenet.angles_to_rotation_matrix(label_yaw, label_pitch, label_roll)
+        rotation_diff_error += distilled.utils.rotation_diff(rot_gt, rot_pr)
+
         # Save first image in batch with pose cube or axis.
         if args.save_viz:
             name = name[0]
@@ -143,5 +152,5 @@ if __name__ == '__main__':
             cv2.imwrite(image_file, cv2_img)
 
     print('Test error in degrees of the model on the ' + str(total) +
-    ' test images. Yaw: %.4f, Pitch: %.4f, Roll: %.4f' % (yaw_error / total,
-    pitch_error / total, roll_error / total))
+    ' test images. Yaw: %.4f, Pitch: %.4f, Roll: %.4f Rotation diff: %.4f' % (yaw_error / total,
+    pitch_error / total, roll_error / total, rotation_diff_error / total))

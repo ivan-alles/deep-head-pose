@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 import scipy.io
-import torch
+from scipy.spatial import transform
+
 
 from distilled import hopenet
 
@@ -94,3 +95,19 @@ def draw_axes(img, yaw, pitch, roll, tx=None, ty=None, axes=((1, 0, 0), (0, 1, 0
         cv2.line(img, o, a, colors[ai], thickness)
 
     return img
+
+
+def rotation_diff(r1, r2, degrees=True):
+    """
+    Computes the absolute angular difference between two rotation matrices d = |r1 - r2|.
+    :param r1: rotation matrix 1 as numpy array
+    :param r2: rotation matrix 2 as numpy array
+    :param degrees: if True, the angles are in degrees, otherwise in radians.
+    :return: angular difference
+    """
+    dr = np.dot(r1, np.linalg.inv(r2))
+    da = np.linalg.norm(transform.Rotation.from_matrix(dr).as_rotvec())
+    if degrees:
+        da = np.rad2deg(da)
+
+    return da
