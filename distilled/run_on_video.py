@@ -20,6 +20,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 parser = argparse.ArgumentParser(description='Test of the self-contained Hopenet implementation')
 parser.add_argument('--video', help='Path of video')
 parser.add_argument('--roi', help='Region of interest x,y,w,h', default=None)
+parser.add_argument('--show-orig-axes', help='Show original left-handed Hopenet axes', default=False)
 
 args = parser.parse_args()
 
@@ -107,16 +108,11 @@ while True:
     # pitch = torch.tensor(20.0)
     # roll = torch.tensor(0.0)
 
-    # Show original hopenet version for comparison
-    show_original_axes = True
-
-    if show_original_axes:
-        # Original assumes that the z axis is looking to the observer (a left-handed CS).
-        utils.draw_axis_orig(frame, yaw.item(), pitch.item(), roll.item(), size=75)
-
+    if args.show_orig_axes:
+        utils.draw_axes_orig(frame, yaw.item(), pitch.item(), roll.item(), size=75)
     utils.draw_axes(frame, yaw, pitch, roll, size=100, thickness=1)
 
-    cv2.putText(frame, f"-pitch/x {pitch:.2f}", (0, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+    cv2.putText(frame, f"pitch/x {pitch:.2f}", (0, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
     cv2.putText(frame, f"yaw/y {yaw:.2f}", (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
     cv2.putText(frame, f"roll/z: {roll:.2f}", (0, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 

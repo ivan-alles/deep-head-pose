@@ -25,7 +25,7 @@ def get_ypr_from_mat(mat_path):
     return pose_params
 
 
-def draw_axis_orig(img, yaw, pitch, roll, tdx=None, tdy=None, size = 100):
+def draw_axes_orig(img, yaw, pitch, roll, tdx=None, tdy=None, size = 100):
     """ Orignal Hope code from code/utils.py. Is used for comparison. """
     from math import sin, cos
 
