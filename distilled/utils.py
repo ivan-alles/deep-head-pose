@@ -60,14 +60,14 @@ def draw_axis_orig(img, yaw, pitch, roll, tdx=None, tdy=None, size = 100):
     return img
 
 
-def draw_axes(img, yaw, pitch, roll, tx=0, ty=0, axes=((1, 0, 0), (0, 1, 0), (0, 0, 1)), size=100, thickness=1):
+def draw_axes(img, yaw, pitch, roll, tx=None, ty=None, axes=((1, 0, 0), (0, 1, 0), (0, 0, 1)), size=100, thickness=1):
     """
     Draws axes using rotation matrix.
     :param img: image
     :param yaw: angle prediciton in degrees.
     :param pitch: angle prediciton in degrees.
     :param roll: angle prediciton in degrees.
-    :param axes axes unit vectors, default value corresponds to the standard right-handed CS:
+    :param axes: axes unit vectors, default value corresponds to the standard right-handed CS:
     x, y as on the screen, z axis looking away from the observer.
     :param size: axis length.
     :param thickness: line thickness.
@@ -88,7 +88,8 @@ def draw_axes(img, yaw, pitch, roll, tx=0, ty=0, axes=((1, 0, 0), (0, 1, 0), (0,
 
     o = tuple(origin[:2].astype(int))
     colors = ((0, 0, 255), (0, 255, 0), (255, 0, 0))
-    for ai in range(3):
+    # Draw z-axis first, as it is usually behind the other two
+    for ai in range(2, -1, -1):
         a = tuple(axes[ai, :2].astype(int))
         cv2.line(img, o, a, colors[ai], thickness)
 
