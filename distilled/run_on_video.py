@@ -19,8 +19,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 parser = argparse.ArgumentParser(description='Test of the self-contained Hopenet implementation')
 parser.add_argument('--video', help='Path of video')
+parser.add_argument('--roi', help='Region of interest x,y,w,h', default=None)
 
 args = parser.parse_args()
+
+roi = None
+if args.roi is not None:
+    roi = [int(x) for x in args.roi.split(',')]
 
 OUTPUT_DIR = 'output'
 
@@ -33,7 +38,8 @@ model.eval()
 
 transformations = transforms.Compose([
     transforms.Resize(224),
-    transforms.CenterCrop(224), transforms.ToTensor()
+    transforms.CenterCrop(224),
+    transforms.ToTensor()
 ])
 
 
@@ -57,16 +63,18 @@ class VideoReader:
             frame_path = self._frames[self._frames_index]
             self._frames_index += 1
             frame = cv2.imread(frame_path)
-            return frame
         else:
             ret, frame = self._video.read()
             if not ret:
                 frame = None
-            return frame
+
+        if roi is not None:
+            frame = frame[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]]
+
+        return frame
 
 
 reader = VideoReader(args.video)
-
 
 # Define the codec and create VideoWriter object
 fourcc = cv2.VideoWriter_fourcc(*'MJPG')
@@ -104,9 +112,9 @@ while True:
 
     if show_original_axes:
         # Original assumes that the z axis is looking to the observer (a left-handed CS).
-        utils.draw_axis_orig(frame, yaw.item(), pitch.item(), roll.item(), size=100)
+        utils.draw_axis_orig(frame, yaw.item(), pitch.item(), roll.item(), size=75)
 
-    utils.draw_axes(frame, yaw, pitch, roll, size=200, thickness=1)
+    utils.draw_axes(frame, yaw, pitch, roll, size=100, thickness=1)
 
     cv2.putText(frame, f"-pitch/x {pitch:.2f}", (0, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
     cv2.putText(frame, f"yaw/y {yaw:.2f}", (0, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)

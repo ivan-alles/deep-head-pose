@@ -127,30 +127,29 @@ class Hopenet(nn.Module):
 
 
 def angles_to_rotation_matrix(yaw, pitch, roll, degrees=True):
-    """ Convert predicted angles to the rotation matrix. It can be used to post-multiply
+    """ Convert pitch, yaw, roll angles to a right-handed rotation matrix. It can be used to post-multiply
         row vectors: rotated = vector * R.
 
-        Based on hopenet's draw_axis() from code/utils.py. The original code draws correctly draws
-        the axes based on the assumption, that z-axis is looking from the screen to the observer
-        (left-handed CS).
+        Based on RotationMatrix.m from the AFLW2000 and 300W LP datasets.
+
+        :param pitch pitch (x) angle
+        :param yaw yaw (y) angle
+        :param roll roll (z) angle
+        :param degrees if True, the angles are in degrees, otherwise in radians.
     """
     # Negate to make the matrix consistent with the head position.
-    pitch = -pitch
+    yaw = -yaw
+    roll = -roll
+
     if degrees:
-        yaw = torch.deg2rad(yaw)
         pitch = torch.deg2rad(pitch)
+        yaw = torch.deg2rad(yaw)
         roll = torch.deg2rad(roll)
 
-    c1 = torch.tensor([
-        torch.cos(yaw) * torch.cos(roll),
-        -torch.cos(yaw) * torch.sin(roll),
-        torch.sin(yaw)])
-    c2 = torch.tensor([
-        torch.cos(pitch) * torch.sin(roll) + torch.cos(roll) * torch.sin(pitch) * torch.sin(yaw),
-        torch.cos(pitch) * torch.cos(roll) - torch.sin(pitch) * torch.sin(yaw) * torch.sin(roll),
-        -torch.cos(yaw) * torch.sin(pitch)])
+    rx = torch.tensor([[1, 0, 0], [0, torch.cos(pitch), torch.sin(pitch)], [0, -torch.sin(pitch), torch.cos(pitch)]])
+    ry = torch.tensor([[torch.cos(yaw), 0, -torch.sin(yaw)], [0, 1, 0], [torch.sin(yaw), 0, torch.cos(yaw)]])
+    rz = torch.tensor([[torch.cos(roll), torch.sin(roll), 0], [-torch.sin(roll), torch.cos(roll), 0], [0, 0, 1]])
 
-    c3 = torch.cross(c1, c2)
-
-    r = torch.stack((c1, c2, c3), dim=-1)
+    r = torch.matmul(torch.matmul(rx, ry), rz)
+    r = torch.transpose(r, 0, 1)
     return r
