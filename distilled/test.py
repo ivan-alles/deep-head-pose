@@ -12,21 +12,19 @@ from distilled import datasets
 from distilled import hopenet
 from distilled import utils
 
+
 def parse_args():
     """Parse input arguments."""
     parser = argparse.ArgumentParser(description='Head pose estimation using the Hopenet network.')
-    parser.add_argument('--gpu', dest='gpu_id', help='GPU device id to use [0]',
-            default=0, type=int)
-    parser.add_argument('--data_dir', dest='data_dir', help='Directory path for data.',
+    parser.add_argument('--gpu', help='GPU device id to use [0]', default=0, type=int)
+    parser.add_argument('--data_dir', help='Directory path for data.', default='', type=str)
+    parser.add_argument('--filename_list',  help='Path to text file containing relative paths for every example.',
           default='', type=str)
-    parser.add_argument('--filename_list', dest='filename_list', help='Path to text file containing relative paths for every example.',
+    parser.add_argument('--snapshot', help='Name of model snapshot.',
           default='', type=str)
-    parser.add_argument('--snapshot', dest='snapshot', help='Name of model snapshot.',
-          default='', type=str)
-    parser.add_argument('--batch_size', dest='batch_size', help='Batch size.',
-          default=1, type=int)
-    parser.add_argument('--save_viz', dest='save_viz', help='Save images with pose cube.',
-          default=False, type=bool)
+    parser.add_argument('--batch_size', help='Batch size.', default=1, type=int)
+    parser.add_argument('--show-ground-truth', help='Show ground truth axes.', default=False, type=bool)
+    parser.add_argument('--show-prediction', help='Show prediction axes.', default=False, type=bool)
     parser.add_argument('--dataset', dest='dataset', help='Dataset type.', default='AFLW2000', type=str)
 
     args = parser.parse_args()
@@ -37,7 +35,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
 
-    device = torch.device(f"cuda:{args.gpu_id}" if torch.cuda.is_available() else "cpu")
+    device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
 
     model = hopenet.create_model(args.snapshot)
     model.to(device)
@@ -103,16 +101,22 @@ if __name__ == '__main__':
             roll_error += torch.sum(torch.abs(roll_predicted - label_roll))
 
             # Save first image in batch with pose cube or axis.
-            if args.save_viz:
+            if args.show_ground_truth or args.show_prediction:
                 name = name[0]
                 if args.dataset == 'BIWI':
                     cv2_img = cv2.imread(os.path.join(args.data_dir, name + '_rgb.png'))
                 else:
                     cv2_img = cv2.imread(os.path.join(args.data_dir, name + '.jpg'))
                 if args.batch_size == 1:
-                    error_string = 'y %.2f, p %.2f, r %.2f' % (torch.sum(torch.abs(yaw_predicted - label_yaw)), torch.sum(torch.abs(pitch_predicted - label_pitch)), torch.sum(torch.abs(roll_predicted - label_roll)))
-                    cv2.putText(cv2_img, error_string, (30, cv2_img.shape[0]- 30), fontFace=1, fontScale=1, color=(0,0,255), thickness=2)
-                utils.draw_axes(cv2_img, yaw_predicted, pitch_predicted, roll_predicted, tx=200, ty=200, size=100)
+                    error_string = 'y %.2f, p %.2f, r %.2f' % (torch.sum(torch.abs(yaw_predicted - label_yaw)),
+                                                               torch.sum(torch.abs(pitch_predicted - label_pitch)),
+                                                               torch.sum(torch.abs(roll_predicted - label_roll)))
+                    cv2.putText(cv2_img, error_string, (30, cv2_img.shape[0] - 30), fontFace=1, fontScale=1, color=(0,0,255), thickness=2)
+                if args.show_prediction:
+                    utils.draw_axes(cv2_img, yaw_predicted, pitch_predicted, roll_predicted, tx=200, ty=200, size=100)
+                if args.show_ground_truth:
+                    utils.draw_axes(cv2_img, label_yaw, label_pitch, label_roll, tx=200, ty=200, size=75, thickness=3)
+
                 image_file = os.path.join('output/images', name + '.jpg')
                 os.makedirs(os.path.dirname(image_file), exist_ok=True)
                 cv2.imwrite(image_file, cv2_img)
