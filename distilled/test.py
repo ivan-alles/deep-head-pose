@@ -2,18 +2,11 @@
 
 import sys, os, argparse
 
-import numpy as np
 import cv2
-import matplotlib.pyplot as plt
-
 import torch
-import torch.nn as nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import transforms
-import torch.backends.cudnn as cudnn
-import torchvision
-import torch.nn.functional as F
 
 from distilled import datasets
 from distilled import hopenet
@@ -53,7 +46,7 @@ if __name__ == '__main__':
     print('Loading data.')
 
     transformations = transforms.Compose([
-        transforms.Scale(224),
+        transforms.Resize(224),
         transforms.CenterCrop(224), transforms.ToTensor()])
 
     if args.dataset == 'Pose_300W_LP':
@@ -91,6 +84,10 @@ if __name__ == '__main__':
 
     for i, (images, labels, cont_labels, name) in enumerate(test_loader):
         with torch.no_grad():
+            # image = images[0].moveaxis(0, 2).detach().cpu().numpy()
+            # cv2.imshow('image', image)
+            # cv2.waitKey(0)
+
             images = Variable(images).to(device)
             total += cont_labels.size(0)
 
