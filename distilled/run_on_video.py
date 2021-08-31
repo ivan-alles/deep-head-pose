@@ -24,12 +24,8 @@ args = parser.parse_args()
 
 OUTPUT_DIR = 'output'
 
-
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-if not os.path.exists(args.video):
-    sys.exit('Video does not exist')
 
 model = hopenet.create_model()
 model.to(device)
@@ -50,6 +46,8 @@ class VideoReader:
             self._frames = glob.glob(video_path + '/**/*.png', recursive=True)
             self._frames_index = 0
         else:
+            if video_path.isnumeric():
+                video_path = int(video_path)  # Camera id
             self._video = cv2.VideoCapture(video_path)
 
     def read_frame(self):
@@ -116,7 +114,7 @@ while True:
 
 
     # cv2.imshow('frame', frame)
-    # cv2.waitKey(0)
+    # cv2.waitKey(1)
 
     if video_out is None:
         video_out = cv2.VideoWriter(os.path.join(OUTPUT_DIR, f'{base_file_name}.avi'), fourcc, 30,
