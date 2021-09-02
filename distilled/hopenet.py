@@ -119,9 +119,9 @@ class Hopenet(nn.Module):
         roll = F.softmax(roll, dim=1)
 
         # Get continuous predictions in degrees.
-        yaw = torch.sum(yaw * self.idx_tensor) * 3 - 99
-        pitch = torch.sum(pitch * self.idx_tensor) * 3 - 99
-        roll = torch.sum(roll * self.idx_tensor) * 3 - 99
+        yaw = torch.sum(yaw * self.idx_tensor, dim=-1) * 3 - 99
+        pitch = torch.sum(pitch * self.idx_tensor, dim=-1) * 3 - 99
+        roll = torch.sum(roll * self.idx_tensor, dim=-1) * 3 - 99
 
         return yaw, pitch, roll
 
