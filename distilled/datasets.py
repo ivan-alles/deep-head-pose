@@ -223,6 +223,10 @@ class Pose_300W_LP_random_ds(Dataset):
         # 122,450
         return self.length
 
+# Profiling code
+crop_width = []
+crop_height = []
+
 class AFLW2000(Dataset):
     def __init__(self, data_dir, filename_path, transform, img_ext='.jpg', annot_ext='.mat', image_mode='RGB'):
         self.data_dir = data_dir
@@ -256,6 +260,10 @@ class AFLW2000(Dataset):
         x_max += 2 * k * abs(x_max - x_min)
         y_max += 0.6 * k * abs(y_max - y_min)
         img = img.crop((int(x_min), int(y_min), int(x_max), int(y_max)))
+
+        global crop_width, crop_height
+        crop_width.append(x_max - x_min)
+        crop_height.append(y_max - y_min)
 
         # We get the pose in radians
         pose = utils.get_ypr_from_mat(mat_path)

@@ -3,6 +3,7 @@
 import sys, os, argparse
 
 import cv2
+import numpy as np
 import torch
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
@@ -84,11 +85,11 @@ if __name__ == '__main__':
 
     for i, (images, labels, cont_labels, name) in enumerate(test_loader):
         with torch.no_grad():
-            for image_i in range(len(images)):
-                image = images[0].moveaxis(0, 2).detach().cpu().numpy()
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                cv2.imshow(f'image-{i}', image)
-                cv2.waitKey(0)
+            # for image_i in range(len(images)):
+            #     image = images[0].moveaxis(0, 2).detach().cpu().numpy()
+            #     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            #     cv2.imshow(f'image-{i}', image)
+            #     cv2.waitKey(0)
 
             images = Variable(images).to(device)
             total += cont_labels.size(0)
@@ -133,5 +134,8 @@ if __name__ == '__main__':
     print('Test error in degrees of the model on the ' + str(total) +
     ' test images. Yaw: %.4f, Pitch: %.4f, Roll: %.4f Rotation diff: %.4f' % (yaw_error / total,
     pitch_error / total, roll_error / total, rotation_diff_error / total))
+
+    # Profiling code
+    print(f'Crop width mean {np.mean(datasets.crop_width)}, crop height mean {np.mean(datasets.crop_height)}')
 
 
